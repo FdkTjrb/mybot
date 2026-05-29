@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-BOT_TOKEN = "8963886990:AAEDWTZDZayKuDhYWuZR5wk2PtYVS6tnJAk"
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 async def download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
@@ -19,6 +19,8 @@ async def download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "outtmpl": "downloads/%(id)s.%(ext)s",
         "merge_output_format": "mp4",
         "quiet": True,
+	"username": "hotspacop@sendnow.win",
+	"password": "pop08643",
     }
 
     file_path = None
