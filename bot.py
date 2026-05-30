@@ -14,6 +14,13 @@ if cookies_content:
 
 cookie_file = "cookies.txt" if os.path.exists("cookies.txt") else None
 
+yt_cookies_content = os.environ.get("YOUTUBE_COOKIES")
+if yt_cookies_content:
+    with open("yt_cookies.txt", "w") as f:
+        f.write(yt_cookies_content)
+
+yt_cookie_file = "yt_cookies.txt" if os.path.exists("yt_cookies.txt") else None
+
 def is_instagram_stories(url):
     return "instagram.com/stories/" in url
 
@@ -101,7 +108,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "preferredquality": "192",
                     }],
                     "quiet": True,
-                    "cookiefile": cookie_file,
+                    "cookiefile": yt_cookie_file,
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
