@@ -1,4 +1,5 @@
 import os
+import shutil
 import instaloader
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -7,6 +8,7 @@ import yt_dlp
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 IG_USER = os.environ.get("IG_USER")
 
+# إعداد ملفات الكوكيز من المتغيرات البيئية في Railway
 cookies_content = os.environ.get("INSTAGRAM_COOKIES")
 if cookies_content:
     with open("cookies.txt", "w") as f:
@@ -47,10 +49,10 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("url")
     choice = query.data
 
-    os.makedirs("downloads", exist_ok=True)
-
-    for f in os.listdir("downloads"):
-        os.remove(os.path.join("downloads", f))
+    # ⚡ تحسين أمان التزامن: إنشاء مجلد فريد لكل طلب تحميل يمنع تداخل ملفات المستخدمين
+    req_id = f"{update.effective_user.id}_{query.message.message_id}"
+    user_download_dir = os.path.join("downloads", req_id)
+    os.makedirs(user_download_dir, exist_ok=True)
 
     msg = await query.edit_message_text("⏳ جاري التحميل...")
     file_path = None
@@ -66,7 +68,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 download_geotags=False,
                 download_comments=False,
                 save_metadata=False,
-                dirname_pattern="downloads",
+                dirname_pattern=user_download_dir,
                 filename_pattern="{date_utc:%Y%m%d%H%M%S}",
             )
 
@@ -82,7 +84,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             count = 0
             for story in stories:
                 for item in story.get_items():
-                    L.download_storyitem(item, target="downloads")
+                    L.download_storyitem(item, target=user_download_dir)
                     count += 1
 
             if count == 0:
@@ -93,15 +95,15 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if choice == "video":
                 ydl_opts = {
                     "format": "bestvideo+bestaudio/best",
-                    "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
+                    "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "merge_output_format": "mp4",
                     "quiet": True,
-                    "cookiefile": cookie_file,
+                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح هنا لاستخدام كوكيز اليوتيوب
                 }
             else:
                 ydl_opts = {
                     "format": "bestaudio/best",
-                    "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
+                    "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "postprocessors": [{
                         "key": "FFmpegExtractAudio",
                         "preferredcodec": "mp3",
@@ -115,9 +117,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ydl.extract_info(url, download=True)
 
         files = sorted([
-            f for f in os.listdir("downloads")
+            f for f in os.listdir(user_download_dir)
             if not f.endswith(('.json', '.txt', '.xml'))
-            and os.path.isfile(os.path.join("downloads", f))
+            and os.path.isfile(os.path.join(user_download_dir, f))
         ])
 
         if not files:
@@ -127,7 +129,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"📤 جاري الإرسال... (0/{len(files)})")
 
         for i, fname in enumerate(files):
-            file_path = os.path.join("downloads", fname)
+            file_path = os.path.join(user_download_dir, fname)
             file_size = os.path.getsize(file_path)
 
             if fname.endswith(('.jpg', '.jpeg', '.png', '.webp')):
@@ -153,8 +155,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ خطأ: {str(e)}")
 
     finally:
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        # 🧹 تنظيف السيرفر بشكل كامل وآمن للمجلد المؤقت الخاص بهذا الطلب
+        if os.path.exists(user_download_dir):
+            shutil.rmtree(user_download_dir)
 
 
 def main():
