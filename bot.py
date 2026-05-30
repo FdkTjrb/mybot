@@ -49,7 +49,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("url")
     choice = query.data
 
-    # ✅ إنشاء مجلد فريد لكل مستخدم لمنع تداخل وحذف ملفات الآخرين
+    # إنشاء مجلد فريد لكل طلب تحميل لمنع تداخل ملفات المستخدمين وحذفها بالخطأ
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
     os.makedirs(user_download_dir, exist_ok=True)
@@ -94,12 +94,19 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             if choice == "video":
                 ydl_opts = {
-                    # صيغة مرنة جداً تحاول جلب أعلى جودة، وإذا حجبها يوتيوب تنتقل تلقائياً للجودة المتاحة
-                    "format": "bestvideo+bestaudio/best",
+                    # توسيع خيارات جلب الجودة لتجرب كل الاحتمالات المتاحة نزولاً لأي صيغة مدمجة
+                    "format": "bestvideo+bestaudio/bestvideo/bestaudio/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "merge_output_format": "mp4",
                     "quiet": True,
-                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح هنا لاستخدام كوكيز اليوتيوب
+                    "cookiefile": yt_cookie_file,
+                    # 🔥 التعديل السحري: إجبار يوتيوب على معاملة السيرفر كتطبيق أندرويد أو آيفون لتخطي حجب الصيغ
+                    "extractor_args": {
+                        "youtube": {
+                            "player_client": ["android", "ios", "mweb", "web"]
+                        }
+                    },
+                    "nocachedir": True, # منع استخدام كاش قديم للصيغ المحجوبة
                 }
             else:
                 ydl_opts = {
@@ -112,6 +119,13 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     }],
                     "quiet": True,
                     "cookiefile": yt_cookie_file,
+                    # تفعيلها أيضاً في خيار الصوت لضمان الاستقرار
+                    "extractor_args": {
+                        "youtube": {
+                            "player_client": ["android", "ios", "mweb", "web"]
+                        }
+                    },
+                    "nocachedir": True,
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -156,7 +170,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ خطأ: {str(e)}")
 
     finally:
-        # تنظيف مجلد المستخدم مؤقتاً بعد انتهاء العملية بالكامل لتوفر مساحة السيرفر
+        # تنظيف السيرفر بالكامل وحذف المجلد المؤقت الخاص بهذا الطلب فوراً
         if os.path.exists(user_download_dir):
             shutil.rmtree(user_download_dir)
 
