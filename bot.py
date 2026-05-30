@@ -37,10 +37,14 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     os.makedirs("downloads", exist_ok=True)
 
+    # امسح أي ملفات قديمة
+    for f in os.listdir("downloads"):
+        os.remove(os.path.join("downloads", f))
+
     if choice == "video":
         ydl_opts = {
             "format": "bestvideo+bestaudio/best",
-            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
             "merge_output_format": "mp4",
             "quiet": True,
             "cookiefile": cookie_file,
@@ -48,7 +52,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": "downloads/%(id)s.%(ext)s",
+            "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
             "postprocessors": [{
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": "mp3",
@@ -73,38 +77,33 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 entries = [info]
 
-            await msg.edit_text(f"📤 جاري الإرسال... (0/{len(entries)})")
+        files = sorted(os.listdir("downloads"))
 
-            for i, entry in enumerate(entries):
-                file_path = ydl.prepare_filename(entry)
+        if not files:
+            await msg.edit_text("❌ ما قدرت أحمل الملفات")
+            return
 
-                if not os.path.exists(file_path):
-                    file_path = file_path.rsplit('.', 1)[0] + '.mp4'
-                if not os.path.exists(file_path):
-                    files = os.listdir("downloads")
-                    if files:
-                        file_path = os.path.join("downloads", files[0])
+        await msg.edit_text(f"📤 جاري الإرسال... (0/{len(files)})")
 
-                file_size = os.path.getsize(file_path)
+        for i, fname in enumerate(files):
+            file_path = os.path.join("downloads", fname)
+            file_size = os.path.getsize(file_path)
 
-                if choice == "video":
-                    if file_size > 50 * 1024 * 1024:
-                        with open(file_path, "rb") as f:
-                            await query.message.reply_document(document=f)
-                    else:
-                        with open(file_path, "rb") as f:
-                            await query.message.reply_video(video=f, supports_streaming=True, caption=entry.get("title", ""))
+            if choice == "video":
+                if file_size > 50 * 1024 * 1024:
+                    with open(file_path, "rb") as f:
+                        await query.message.reply_document(document=f)
                 else:
                     with open(file_path, "rb") as f:
-                        await query.message.reply_audio(audio=f, title=entry.get("title", ""))
+                        await query.message.reply_video(video=f, supports_streaming=True)
+            else:
+                with open(file_path, "rb") as f:
+                    await query.message.reply_audio(audio=f)
 
-                if os.path.exists(file_path):
-                    os.remove(file_path)
+            os.remove(file_path)
+            await msg.edit_text(f"📤 جاري الإرسال... ({i+1}/{len(files)})")
 
-                await msg.edit_text(f"📤 جاري الإرسال... ({i+1}/{len(entries)})")
-
-            await msg.delete()
-            file_path = None
+        await msg.delete()
 
     except Exception as e:
         await msg.edit_text(f"❌ خطأ: {str(e)}")
