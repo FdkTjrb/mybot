@@ -75,7 +75,8 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ])
 
         if not files:
-            await msg.edit_text("❌ ما قدرت أحمل الملفات")
+            all_files = os.listdir("downloads")
+            await msg.edit_text(f"❌ الملفات الموجودة: {str(all_files)}")
             return
 
         await msg.edit_text(f"📤 جاري الإرسال... (0/{len(files)})")
