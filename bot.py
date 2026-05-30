@@ -49,7 +49,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("url")
     choice = query.data
 
-    # إنشاء مجلد فريد لكل طلب تحميل لمنع تداخل ملفات المستخدمين وحذفها بالخطأ
+    # ✅ إنشاء مجلد فريد لكل مستخدم لمنع تداخل وحذف ملفات الآخرين
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
     os.makedirs(user_download_dir, exist_ok=True)
@@ -94,12 +94,12 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             if choice == "video":
                 ydl_opts = {
-                    # صيغة مرنة تضمن أعلى جودة وتتحول تلقائياً عبر ffmpeg
+                    # صيغة مرنة جداً تحاول جلب أعلى جودة، وإذا حجبها يوتيوب تنتقل تلقائياً للجودة المتاحة
                     "format": "bestvideo+bestaudio/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "merge_output_format": "mp4",
                     "quiet": True,
-                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح لاستخدام كوكيز اليوتيوب بدلاً من الانستا
+                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح هنا لاستخدام كوكيز اليوتيوب
                 }
             else:
                 ydl_opts = {
@@ -156,7 +156,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ خطأ: {str(e)}")
 
     finally:
-        # تنظيف السيرفر بالكامل وحذف المجلد المؤقت الخاص بهذا الطلب فوراً
+        # تنظيف مجلد المستخدم مؤقتاً بعد انتهاء العملية بالكامل لتوفر مساحة السيرفر
         if os.path.exists(user_download_dir):
             shutil.rmtree(user_download_dir)
 
