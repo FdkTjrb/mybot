@@ -1,5 +1,4 @@
 import os
-import glob
 import instaloader
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
@@ -52,7 +51,6 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         if is_instagram_stories(url):
-            # استخدم instaloader للستوريات
             username = url.split("/stories/")[1].split("/")[0]
 
             L = instaloader.Instaloader(
@@ -67,9 +65,10 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             if IG_USER and IG_PASS:
-                L.login(IG_USER, IG_PASS)
-            elif cookie_file:
-                L.load_session_from_file(IG_USER or username, cookie_file)
+                try:
+                    L.login(IG_USER, IG_PASS)
+                except Exception:
+                    pass
 
             profile = instaloader.Profile.from_username(L.context, username)
             stories = L.get_stories(userids=[profile.userid])
@@ -85,7 +84,6 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
         else:
-            # استخدم yt-dlp لباقي المواقع
             if choice == "video":
                 ydl_opts = {
                     "format": "bestvideo+bestaudio/best",
@@ -110,7 +108,6 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.extract_info(url, download=True)
 
-        # أرسل كل الملفات
         files = sorted([
             f for f in os.listdir("downloads")
             if f.endswith(('.mp4', '.jpg', '.jpeg', '.png', '.mp3'))
