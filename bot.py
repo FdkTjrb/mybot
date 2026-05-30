@@ -70,7 +70,8 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         files = sorted([
             f for f in os.listdir("downloads")
-            if f.endswith(('.mp4', '.jpg', '.jpeg', '.png', '.mp3'))
+            if not f.endswith(('.json', '.txt', '.xml'))
+            and os.path.isfile(os.path.join("downloads", f))
         ])
 
         if not files:
@@ -83,7 +84,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             file_path = os.path.join("downloads", fname)
             file_size = os.path.getsize(file_path)
 
-            if fname.endswith(('.jpg', '.jpeg', '.png')):
+            if fname.endswith(('.jpg', '.jpeg', '.png', '.webp')):
                 with open(file_path, "rb") as f:
                     await query.message.reply_photo(photo=f)
             elif fname.endswith('.mp3'):
