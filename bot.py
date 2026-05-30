@@ -26,7 +26,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("🎵 صوت MP3", callback_data="audio"),
         ]
     ]
-    await update.message.reply_text("شو تبي تحمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text("شتبي تحمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,9 +66,11 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if choice == "video":
-                file_path = ydl.prepare_filename(info).replace(f".{info['ext']}", ".mp4")
+                ext = info.get('ext', 'mp4')
+                file_path = ydl.prepare_filename(info).replace(f".{ext}", ".mp4")
             else:
-                file_path = ydl.prepare_filename(info).replace(f".{info['ext']}", ".mp3")
+                ext = info.get('ext', 'mp3')
+                file_path = ydl.prepare_filename(info).replace(f".{ext}", ".mp3")
 
         await msg.edit_text("📤 جاري الإرسال...")
         file_size = os.path.getsize(file_path)
