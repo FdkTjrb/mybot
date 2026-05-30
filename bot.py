@@ -49,7 +49,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("url")
     choice = query.data
 
-    # إنشاء مجلد فريد لكل طلب تحميل منعاً لتداخل ملفات المستخدمين المختلفة
+    # إنشاء مجلد فريد لكل طلب تحميل لمنع تداخل ملفات المستخدمين وحذفها بالخطأ
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
     os.makedirs(user_download_dir, exist_ok=True)
@@ -94,16 +94,16 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             if choice == "video":
                 ydl_opts = {
-                    # ميزة مرونة اختيار الجودة لتفادي حظر الجودات المنفصلة على السيرفرات السحابية
-                    "format": "bestvideo*[ext=mp4]+bestaudio*[ext=m4a]/best[ext=mp4]/best",
+                    # صيغة مرنة تضمن أعلى جودة وتتحول تلقائياً عبر ffmpeg
+                    "format": "bestvideo+bestaudio/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "merge_output_format": "mp4",
                     "quiet": True,
-                    "cookiefile": yt_cookie_file, # كوكيز اليوتيوب الصحيحة
+                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح لاستخدام كوكيز اليوتيوب بدلاً من الانستا
                 }
             else:
                 ydl_opts = {
-                    "format": "bestaudio*/best",
+                    "format": "bestaudio/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "postprocessors": [{
                         "key": "FFmpegExtractAudio",
@@ -156,7 +156,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ خطأ: {str(e)}")
 
     finally:
-        # تنظيف وحذف المجلد المؤقت الخاص بالعملية بالكامل لعدم استهلاك مساحة الـ Disk
+        # تنظيف السيرفر بالكامل وحذف المجلد المؤقت الخاص بهذا الطلب فوراً
         if os.path.exists(user_download_dir):
             shutil.rmtree(user_download_dir)
 
