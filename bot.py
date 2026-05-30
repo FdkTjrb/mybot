@@ -65,12 +65,20 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            if choice == "video":
-                ext = info.get('ext', 'mp4')
-                file_path = ydl.prepare_filename(info).replace(f".{ext}", ".mp4")
-            else:
-                ext = info.get('ext', 'mp3')
-                file_path = ydl.prepare_filename(info).replace(f".{ext}", ".mp3")
+
+            # لو فيه entries (ستوريات متعددة)
+            if 'entries' in info:
+                info = info['entries'][0]
+
+            file_path = ydl.prepare_filename(info)
+
+            # لو الملف ما موجود جرب امتدادات ثانية
+            if not os.path.exists(file_path):
+                file_path = file_path.rsplit('.', 1)[0] + '.mp4'
+            if not os.path.exists(file_path):
+                files = os.listdir("downloads")
+                if files:
+                    file_path = os.path.join("downloads", files[0])
 
         await msg.edit_text("📤 جاري الإرسال...")
         file_size = os.path.getsize(file_path)
