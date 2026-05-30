@@ -48,6 +48,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "merge_output_format": "mp4",
             "quiet": True,
             "cookiefile": cookie_file,
+            "extractor_args": {"instagram": {"include_stories": True}},
         }
     else:
         ydl_opts = {
@@ -60,6 +61,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }],
             "quiet": True,
             "cookiefile": cookie_file,
+            "extractor_args": {"instagram": {"include_stories": True}},
         }
 
     msg = await query.edit_message_text("⏳ جاري التحميل...")
