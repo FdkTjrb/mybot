@@ -5,7 +5,6 @@ import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# حفظ كوكيز انستا
 cookies_content = os.environ.get("INSTAGRAM_COOKIES")
 if cookies_content:
     with open("cookies.txt", "w") as f:
@@ -66,17 +65,15 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-            # لو فيه entries (ستوريات متعددة)
             if 'entries' in info:
                 entries = [e for e in info['entries'] if e is not None]
                 if not entries:
-                await msg.edit_text("❌ ما قدرت أحمل الستوري")
-                return
-            info = entries[0]
+                    await msg.edit_text("❌ ما قدرت أحمل الستوري")
+                    return
+                info = entries[0]
 
             file_path = ydl.prepare_filename(info)
 
-            # لو الملف ما موجود جرب امتدادات ثانية
             if not os.path.exists(file_path):
                 file_path = file_path.rsplit('.', 1)[0] + '.mp4'
             if not os.path.exists(file_path):
