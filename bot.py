@@ -67,8 +67,12 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if IG_USER and IG_PASS:
                 try:
                     L.login(IG_USER, IG_PASS)
-                except Exception:
-                    pass
+                except Exception as login_err:
+                    await msg.edit_text(f"❌ فشل تسجيل الدخول: {str(login_err)}")
+                    return
+            else:
+                await msg.edit_text("❌ ما في يوزر وباسورد انستا")
+                return
 
             profile = instaloader.Profile.from_username(L.context, username)
             stories = L.get_stories(userids=[profile.userid])
