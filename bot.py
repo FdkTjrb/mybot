@@ -1,9 +1,13 @@
 import os
+import glob
+import instaloader
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+IG_USER = os.environ.get("IG_USER")
+IG_PASS = os.environ.get("IG_PASS")
 
 cookies_content = os.environ.get("INSTAGRAM_COOKIES")
 if cookies_content:
@@ -11,6 +15,9 @@ if cookies_content:
         f.write(cookies_content)
 
 cookie_file = "cookies.txt" if os.path.exists("cookies.txt") else None
+
+def is_instagram_stories(url):
+    return "instagram.com/stories/" in url
 
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
@@ -37,49 +44,77 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     os.makedirs("downloads", exist_ok=True)
 
-    # امسح أي ملفات قديمة
     for f in os.listdir("downloads"):
         os.remove(os.path.join("downloads", f))
-
-    if choice == "video":
-        ydl_opts = {
-            "format": "bestvideo+bestaudio/best",
-            "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
-            "merge_output_format": "mp4",
-            "quiet": True,
-            "cookiefile": cookie_file,
-            "extractor_args": {"instagram": {"include_stories": True}},
-        }
-    else:
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }],
-            "quiet": True,
-            "cookiefile": cookie_file,
-            "extractor_args": {"instagram": {"include_stories": True}},
-        }
 
     msg = await query.edit_message_text("⏳ جاري التحميل...")
     file_path = None
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+        if is_instagram_stories(url):
+            # استخدم instaloader للستوريات
+            username = url.split("/stories/")[1].split("/")[0]
 
-            if 'entries' in info:
-                entries = [e for e in info['entries'] if e is not None]
-                if not entries:
-                    await msg.edit_text("❌ الستوري خاص أو منتهي الصلاحية")
-                    return
+            L = instaloader.Instaloader(
+                download_pictures=True,
+                download_videos=True,
+                download_video_thumbnails=False,
+                download_geotags=False,
+                download_comments=False,
+                save_metadata=False,
+                dirname_pattern="downloads",
+                filename_pattern="{date_utc:%Y%m%d%H%M%S}_{shortcode}",
+            )
+
+            if IG_USER and IG_PASS:
+                L.login(IG_USER, IG_PASS)
+            elif cookie_file:
+                L.load_session_from_file(IG_USER or username, cookie_file)
+
+            profile = instaloader.Profile.from_username(L.context, username)
+            stories = L.get_stories(userids=[profile.userid])
+
+            count = 0
+            for story in stories:
+                for item in story.get_items():
+                    L.download_storyitem(item, target="downloads")
+                    count += 1
+
+            if count == 0:
+                await msg.edit_text("❌ ما في ستوريات أو الحساب خاص")
+                return
+
+        else:
+            # استخدم yt-dlp لباقي المواقع
+            if choice == "video":
+                ydl_opts = {
+                    "format": "bestvideo+bestaudio/best",
+                    "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
+                    "merge_output_format": "mp4",
+                    "quiet": True,
+                    "cookiefile": cookie_file,
+                }
             else:
-                entries = [info]
+                ydl_opts = {
+                    "format": "bestaudio/best",
+                    "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
+                    "postprocessors": [{
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "mp3",
+                        "preferredquality": "192",
+                    }],
+                    "quiet": True,
+                    "cookiefile": cookie_file,
+                }
 
-        files = sorted(os.listdir("downloads"))
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.extract_info(url, download=True)
+
+        # أرسل كل الملفات
+        files = sorted([
+            f for f in os.listdir("downloads")
+            if f.endswith(('.mp4', '.jpg', '.jpeg', '.png', '.mp3'))
+        ])
 
         if not files:
             await msg.edit_text("❌ ما قدرت أحمل الملفات")
@@ -91,16 +126,19 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             file_path = os.path.join("downloads", fname)
             file_size = os.path.getsize(file_path)
 
-            if choice == "video":
+            if fname.endswith(('.jpg', '.jpeg', '.png')):
+                with open(file_path, "rb") as f:
+                    await query.message.reply_photo(photo=f)
+            elif fname.endswith('.mp3'):
+                with open(file_path, "rb") as f:
+                    await query.message.reply_audio(audio=f)
+            else:
                 if file_size > 50 * 1024 * 1024:
                     with open(file_path, "rb") as f:
                         await query.message.reply_document(document=f)
                 else:
                     with open(file_path, "rb") as f:
                         await query.message.reply_video(video=f, supports_streaming=True)
-            else:
-                with open(file_path, "rb") as f:
-                    await query.message.reply_audio(audio=f)
 
             os.remove(file_path)
             await msg.edit_text(f"📤 جاري الإرسال... ({i+1}/{len(files)})")
