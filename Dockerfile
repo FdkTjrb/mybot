@@ -4,8 +4,11 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+# سطر إضافي لضمان جلب أحدث إصدار من المكتبة لكسر كاش يوتيوب
+RUN pip install --no-cache-dir --upgrade yt-dlp
 
 CMD ["python3", "bot.py"]
