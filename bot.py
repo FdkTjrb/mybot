@@ -6,7 +6,6 @@ import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 IG_USER = os.environ.get("IG_USER")
-IG_PASS = os.environ.get("IG_PASS")
 
 cookies_content = os.environ.get("INSTAGRAM_COOKIES")
 if cookies_content:
@@ -64,12 +63,11 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 filename_pattern="{date_utc:%Y%m%d%H%M%S}",
             )
 
-            if IG_USER and IG_PASS:
-                try:
-                    L.login(IG_USER, IG_PASS)
-                except Exception:
-                    # جرب بدون تسجيل دخول
-                    pass
+            try:
+                L.load_session_from_file(IG_USER, "session")
+            except Exception as e:
+                await msg.edit_text(f"❌ فشل تحميل الـ session: {str(e)}")
+                return
 
             profile = instaloader.Profile.from_username(L.context, username)
             stories = L.get_stories(userids=[profile.userid])
@@ -81,16 +79,8 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     count += 1
 
             if count == 0:
-                # جرب yt-dlp كبديل
-                ydl_opts = {
-                    "format": "bestvideo+bestaudio/best",
-                    "outtmpl": "downloads/%(autonumber)s_%(id)s.%(ext)s",
-                    "merge_output_format": "mp4",
-                    "quiet": True,
-                    "cookiefile": cookie_file,
-                }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.extract_info(url, download=True)
+                await msg.edit_text("❌ ما في ستوريات أو الحساب خاص")
+                return
 
         else:
             if choice == "video":
