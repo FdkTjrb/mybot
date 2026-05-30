@@ -68,7 +68,11 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             # لو فيه entries (ستوريات متعددة)
             if 'entries' in info:
-                info = info['entries'][0]
+                entries = [e for e in info['entries'] if e is not None]
+                if not entries:
+                await msg.edit_text("❌ ما قدرت أحمل الستوري")
+                return
+            info = entries[0]
 
             file_path = ydl.prepare_filename(info)
 
