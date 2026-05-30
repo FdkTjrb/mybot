@@ -49,7 +49,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.user_data.get("url")
     choice = query.data
 
-    # ⚡ تحسين أمان التزامن: إنشاء مجلد فريد لكل طلب تحميل يمنع تداخل ملفات المستخدمين
+    # إنشاء مجلد فريد لكل طلب تحميل منعاً لتداخل ملفات المستخدمين المختلفة
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
     os.makedirs(user_download_dir, exist_ok=True)
@@ -94,15 +94,16 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             if choice == "video":
                 ydl_opts = {
-                    "format": "bestvideo+bestaudio/best",
+                    # ميزة مرونة اختيار الجودة لتفادي حظر الجودات المنفصلة على السيرفرات السحابية
+                    "format": "bestvideo*[ext=mp4]+bestaudio*[ext=m4a]/best[ext=mp4]/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "merge_output_format": "mp4",
                     "quiet": True,
-                    "cookiefile": yt_cookie_file,  # ✅ تم التصحيح هنا لاستخدام كوكيز اليوتيوب
+                    "cookiefile": yt_cookie_file, # كوكيز اليوتيوب الصحيحة
                 }
             else:
                 ydl_opts = {
-                    "format": "bestaudio/best",
+                    "format": "bestaudio*/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "postprocessors": [{
                         "key": "FFmpegExtractAudio",
@@ -155,7 +156,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.edit_text(f"❌ خطأ: {str(e)}")
 
     finally:
-        # 🧹 تنظيف السيرفر بشكل كامل وآمن للمجلد المؤقت الخاص بهذا الطلب
+        # تنظيف وحذف المجلد المؤقت الخاص بالعملية بالكامل لعدم استهلاك مساحة الـ Disk
         if os.path.exists(user_download_dir):
             shutil.rmtree(user_download_dir)
 
