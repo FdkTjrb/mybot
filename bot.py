@@ -47,6 +47,8 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+info = ydl.extract_info(url, download=False)
+print(info)
 
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
