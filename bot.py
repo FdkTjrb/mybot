@@ -112,7 +112,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if choice == "video":
 
                 ydl_opts = {
-                    "format": "bv*+ba/b",
+                    "format": "bestvideo*+bestaudio/best",
                     "merge_output_format": "mp4",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "quiet": True,
