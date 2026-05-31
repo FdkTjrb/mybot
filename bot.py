@@ -47,8 +47,6 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-info = ydl.extract_info(url, download=False)
-print(info)
 
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -142,7 +140,12 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.extract_info(url, download=True)
+    info = ydl.extract_info(url, download=False)
+
+    print("TITLE:", info.get("title"))
+    print("FORMATS:", len(info.get("formats", [])))
+
+    ydl.download([url])
 
         files = sorted([
             f for f in os.listdir(user_download_dir)
