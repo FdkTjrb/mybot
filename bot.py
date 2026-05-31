@@ -140,7 +140,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 }
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    info = ydl.extract_info(url, download=False)
+                info = ydl.extract_info(url, download=False)
 
     print("TITLE:", info.get("title"))
     print("FORMATS:", len(info.get("formats", [])))
