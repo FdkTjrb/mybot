@@ -1,107 +1,68 @@
 import os
-import shutil
-import instaloader
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram import Update
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-# إعدادات المتغيرات
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-IG_USER = os.environ.get("IG_USER")
+BOT_TOKEN = "8963886990:AAFRtN7AXppucUnWAvMWV4hDRtq4QYbzSFo"
 
-# تهيئة ملفات الكوكيز
-def setup_cookies(env_var, filename):
-    content = os.environ.get(env_var)
-    if content:
-        with open(filename, "w") as f:
-            f.write(content)
-        return filename
-    return None
-
-cookie_file = setup_cookies("INSTAGRAM_COOKIES", "cookies.txt")
-yt_cookie_file = setup_cookies("YOUTUBE_COOKIES", "yt_cookies.txt")
-
-def is_instagram_stories(url):
-    return "instagram.com/stories/" in url
-
-async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
+    
+    # التأكد أن الرسالة رابط
     if not url.startswith("http"):
         return
 
-    context.user_data["url"] = url
-    keyboard = [[InlineKeyboardButton("🎬 فيديو", callback_data="video"), InlineKeyboardButton("🎵 صوت MP3", callback_data="audio")]]
-    await update.message.reply_text("شتبي تحمل؟", reply_markup=InlineKeyboardMarkup(keyboard))
+    msg = await update.message.reply_text("⏳ جاري التحميل... يرجى الانتظار.")
+    os.makedirs("downloads", exist_ok=True)
 
-async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    url = context.user_data.get("url")
-    choice = query.data
+    # إعدادات yt-dlp المحسنة لمحاكاة المتصفح
+    ydl_opts = {
+        "format": "bestvideo+bestaudio/best",
+        "outtmpl": "downloads/%(id)s.%(ext)s",
+        "merge_output_format": "mp4",
+        "quiet": True,
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    }
 
-    if not url:
-        await query.edit_message_text("❌ حدث خطأ، يرجى إرسال الرابط مرة أخرى.")
-        return
-
-    req_id = f"{update.effective_user.id}_{query.message.message_id}"
-    user_download_dir = os.path.join("downloads", req_id)
-    os.makedirs(user_download_dir, exist_ok=True)
-    msg = await query.edit_message_text("⏳ جاري التحميل... انتظر قليلاً.")
-
+    file_path = None
     try:
-        if is_instagram_stories(url):
-            # منطق إنستجرام
-            L = instaloader.Instaloader(dirname_pattern=user_download_dir, filename_pattern="{date_utc:%Y%m%d%H%M%S}")
-            if os.path.exists("session"): L.load_session_from_file(IG_USER)
-            
-            username = url.split("/stories/")[1].split("/")[0]
-            profile = instaloader.Profile.from_username(L.context, username)
-            stories = L.get_stories(userids=[profile.userid])
-            for story in stories:
-                for item in story.get_items():
-                    L.download_storyitem(item, target=user_download_dir)
-        else:
-            # منطق YouTube / Social Media
-            ydl_opts = {
-                "outtmpl": f"{user_download_dir}/%(title)s.%(ext)s",
-                "quiet": True,
-                "cookiefile": yt_cookie_file,
-                "format": "bestvideo+bestaudio/best" if choice == "video" else "bestaudio/best"
-            }
-            if choice == "audio":
-                ydl_opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
-            
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # استخراج المعلومات والتحميل
+            info = ydl.extract_info(url, download=True)
+            # تحديد مسار الملف بدقة بعد التحميل
+            file_path = ydl.prepare_filename(info)
+            if not file_path.endswith('.mp4'):
+                file_path = file_path.rsplit('.', 1)[0] + '.mp4'
 
-        # عملية الإرسال
-        files = [os.path.join(user_download_dir, f) for f in os.listdir(user_download_dir) if not f.endswith(".json")]
-        if not files:
-            await msg.edit_text("❌ لم يتم العثور على ملفات للتحميل.")
-            return
+        await msg.edit_text("📤 جاري الإرسال إلى تليجرام...")
 
-        for i, file_path in enumerate(files):
-            await msg.edit_text(f"📤 جاري الإرسال ({i+1}/{len(files)})...")
-            with open(file_path, "rb") as f:
-                if file_path.endswith((".mp3")):
-                    await query.message.reply_audio(audio=f)
-                else:
-                    await query.message.reply_document(document=f)
+        # التحقق من حجم الملف للإرسال
+        file_size = os.path.getsize(file_path)
         
+        with open(file_path, "rb") as f:
+            if file_size > 50 * 1024 * 1024:
+                # إرسال كمستند إذا كان كبيراً
+                await update.message.reply_document(document=f, caption=info.get("title", ""))
+            else:
+                # إرسال كفيديو
+                await update.message.reply_video(video=f, supports_streaming=True, caption=info.get("title", ""))
+
         await msg.delete()
 
     except Exception as e:
-        await msg.edit_text(f"❌ حدث خطأ: {str(e)}")
+        await msg.edit_text(f"❌ حدث خطأ أثناء التحميل:\n{str(e)}")
+
     finally:
-        if os.path.exists(user_download_dir):
-            shutil.rmtree(user_download_dir)
+        # حذف الملف المؤقت بعد الانتهاء
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
-    app.add_handler(CallbackQueryHandler(handle_choice))
-    print("✅ البوت يعمل الآن...")
+    # استخدام فلتر الروابط فقط لتقليل الضغط على البوت
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_and_send))
+    
+    print("✅ البوت يعمل الآن..")
     app.run_polling()
 
 if __name__ == "__main__":
