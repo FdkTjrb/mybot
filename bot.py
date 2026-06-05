@@ -5,7 +5,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 
-# جلب المتغيرات من البيئة
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 IG_USER = os.environ.get("IG_USER")
 
@@ -41,14 +40,14 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     await update.message.reply_text(
-        "شنو تبي تحمل؟",
+        "شتبي تحمل؟",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()    url = context.user_data.get("url")
-    choice = query.data
+    await query.answer()
+    url = context.user_data.get("url")    choice = query.data
 
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
@@ -89,20 +88,19 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if count == 0:
                 await msg.edit_text("❌ ما في ستوريات أو الحساب خاص")
                 return
-
         else:
             if choice == "video":
                 ydl_opts = {
                     "format": "bestvideo*+bestaudio/best",
                     "merge_output_format": "mp4",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
-                    "quiet": True,                    "cookiefile": yt_cookie_file,
-                    "nocachedir": True,
-                    "noplaylist": True,
+                    "quiet": True,
+                    "cookiefile": yt_cookie_file,
+                    "nocachedir": True,                    "noplaylist": True,
                 }
             else:
                 ydl_opts = {
-                    "format": "bestaudio",
+                    "format": "bestaudio/best",
                     "outtmpl": f"{user_download_dir}/%(autonumber)s_%(id)s.%(ext)s",
                     "postprocessors": [
                         {
@@ -145,9 +143,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif fname.endswith(".mp3"):
                 with open(file_path, "rb") as f:
                     await query.message.reply_audio(audio=f)
-            else:                if file_size > 50 * 1024 * 1024:
-                    with open(file_path, "rb") as f:
-                        await query.message.reply_document(document=f)
+            else:
+                if file_size > 50 * 1024 * 1024:
+                    with open(file_path, "rb") as f:                        await query.message.reply_document(document=f)
                 else:
                     with open(file_path, "rb") as f:
                         await query.message.reply_video(video=f, supports_streaming=True)
