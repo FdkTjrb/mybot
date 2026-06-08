@@ -83,8 +83,13 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
-        # عملية الإرسال
-        files = [os.path.join(user_download_dir, f) for f in os.listdir(user_download_dir) if not f.endswith(".json")]
+        # عملية الإرسال — نرسل فقط الميديا المفيدة
+        ALLOWED_EXT = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".mp3", ".m4a", ".jpg", ".jpeg", ".png", ".gif")
+        files = [
+            os.path.join(user_download_dir, f)
+            for f in os.listdir(user_download_dir)
+            if f.lower().endswith(ALLOWED_EXT)
+        ]
         if not files:
             await msg.edit_text("❌ لم يتم العثور على ملفات للتحميل.")
             return
@@ -92,10 +97,12 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, file_path in enumerate(files):
             await msg.edit_text(f"📤 جاري الإرسال ({i+1}/{len(files)})...")
             with open(file_path, "rb") as f:
-                if file_path.endswith(".mp3"):
+                if file_path.lower().endswith((".mp3", ".m4a")):
                     await query.message.reply_audio(audio=f)
+                elif file_path.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
+                    await query.message.reply_photo(photo=f)
                 else:
-                    await query.message.reply_document(document=f)
+                    await query.message.reply_video(video=f)
 
         await msg.delete()
 
@@ -109,7 +116,7 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
     app.add_handler(CallbackQueryHandler(handle_choice))
-    print("✅ البوت يعمل الآن...")
+    print("✅ البوت شغال...")
     app.run_polling()
 
 if __name__ == "__main__":
