@@ -1,3 +1,3 @@
-python-telegram-bot==20.7
-instaloader==4.11
-yt-dlp==2023.12.30
+python-telegram-bot
+instaloader
+yt-dlp
