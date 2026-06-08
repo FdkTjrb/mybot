@@ -59,8 +59,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_instagram_stories(url):
             # منطق إنستجرام
             L = instaloader.Instaloader(dirname_pattern=user_download_dir, filename_pattern="{date_utc:%Y%m%d%H%M%S}")
-            if os.path.exists("session"):
-                L.load_session_from_file(IG_USER)
+            session_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "session")
+            if os.path.exists(session_path) and IG_USER:
+                L.load_session_from_file(IG_USER, filename=session_path)
 
             username = url.split("/stories/")[1].split("/")[0]
             profile = instaloader.Profile.from_username(L.context, username)
