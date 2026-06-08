@@ -53,7 +53,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     req_id = f"{update.effective_user.id}_{query.message.message_id}"
     user_download_dir = os.path.join("downloads", req_id)
     os.makedirs(user_download_dir, exist_ok=True)
-    msg = await query.edit_message_text("⏳ جاري التحميل... انتظر قليلاً.")
+    msg = await query.edit_message_text("⏳ جاري التحميل... استنى شوي.")
 
     try:
         if is_instagram_stories(url):
@@ -83,13 +83,23 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
-        # عملية الإرسال — نرسل فقط الميديا المفيدة
-        ALLOWED_EXT = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".mp3", ".m4a", ".jpg", ".jpeg", ".png", ".gif")
-        files = [
-            os.path.join(user_download_dir, f)
-            for f in os.listdir(user_download_dir)
-            if f.lower().endswith(ALLOWED_EXT)
+        # عملية الإرسال — نرسل فقط الميديا المفيدة وبدون thumbnails
+        VIDEO_EXT = (".mp4", ".mov", ".avi", ".mkv", ".webm")
+        AUDIO_EXT = (".mp3", ".m4a")
+        IMAGE_EXT = (".jpg", ".jpeg", ".png", ".gif")
+        ALLOWED_EXT = VIDEO_EXT + AUDIO_EXT + IMAGE_EXT
+
+        all_files = [f for f in os.listdir(user_download_dir) if f.lower().endswith(ALLOWED_EXT)]
+
+        # نتجاهل الصور اللي عندها نفس اسم فيديو (thumbnails)
+        video_stems = {os.path.splitext(f)[0] for f in all_files if f.lower().endswith(VIDEO_EXT)}
+        filtered = [
+            f for f in all_files
+            if not (f.lower().endswith(IMAGE_EXT) and os.path.splitext(f)[0] in video_stems)
         ]
+
+        files = [os.path.join(user_download_dir, f) for f in filtered]
+
         if not files:
             await msg.edit_text("❌ لم يتم العثور على ملفات للتحميل.")
             return
@@ -97,9 +107,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, file_path in enumerate(files):
             await msg.edit_text(f"📤 جاري الإرسال ({i+1}/{len(files)})...")
             with open(file_path, "rb") as f:
-                if file_path.lower().endswith((".mp3", ".m4a")):
+                if file_path.lower().endswith(AUDIO_EXT):
                     await query.message.reply_audio(audio=f)
-                elif file_path.lower().endswith((".jpg", ".jpeg", ".png", ".gif")):
+                elif file_path.lower().endswith(IMAGE_EXT):
                     await query.message.reply_photo(photo=f)
                 else:
                     await query.message.reply_video(video=f)
