@@ -19,14 +19,20 @@ def setup_cookies(env_var, filename):
     return None
 
 cookie_file = setup_cookies("INSTAGRAM_COOKIES", "cookies.txt")
-yt_cookie_file = setup_cookies("YOUTUBE_COOKIES", "yt_cookies.txt")
 
 def is_instagram_stories(url):
     return "instagram.com/stories/" in url
 
+def is_youtube(url):
+    return "youtube.com" in url or "youtu.be" in url
+
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
+        return
+
+    if is_youtube(url):
+        await update.message.reply_text("❌ ما قدر على اليوتيوب، جرب رابط من إنستجرام أو منصة ثانية.")
         return
 
     context.user_data["url"] = url
@@ -36,7 +42,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
+
     url = context.user_data.get("url")
     choice = query.data
 
@@ -53,8 +59,9 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_instagram_stories(url):
             # منطق إنستجرام
             L = instaloader.Instaloader(dirname_pattern=user_download_dir, filename_pattern="{date_utc:%Y%m%d%H%M%S}")
-            if os.path.exists("session"): L.load_session_from_file(IG_USER)
-            
+            if os.path.exists("session"):
+                L.load_session_from_file(IG_USER)
+
             username = url.split("/stories/")[1].split("/")[0]
             profile = instaloader.Profile.from_username(L.context, username)
             stories = L.get_stories(userids=[profile.userid])
@@ -62,16 +69,16 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for item in story.get_items():
                     L.download_storyitem(item, target=user_download_dir)
         else:
-            # منطق YouTube / Social Media
+            # منطق باقي المنصات
             ydl_opts = {
                 "outtmpl": f"{user_download_dir}/%(title)s.%(ext)s",
                 "quiet": True,
-                "cookiefile": yt_cookie_file,
+                "cookiefile": cookie_file,
                 "format": "bestvideo+bestaudio/best" if choice == "video" else "bestaudio/best"
             }
             if choice == "audio":
                 ydl_opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}]
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
 
@@ -84,11 +91,11 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, file_path in enumerate(files):
             await msg.edit_text(f"📤 جاري الإرسال ({i+1}/{len(files)})...")
             with open(file_path, "rb") as f:
-                if file_path.endswith((".mp3")):
+                if file_path.endswith(".mp3"):
                     await query.message.reply_audio(audio=f)
                 else:
                     await query.message.reply_document(document=f)
-        
+
         await msg.delete()
 
     except Exception as e:
@@ -104,5 +111,5 @@ def main():
     print("✅ البوت يعمل الآن...")
     app.run_polling()
 
-if __name__ == "__main_ _":
+if __name__ == "__main__":
     main()
