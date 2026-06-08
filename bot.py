@@ -104,40 +104,5 @@ def main():
     print("✅ البوت يعمل الآن...")
     app.run_polling()
 
-if __name__ == "__main__":
-    main()import os
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
-import yt_dlp
-
-BOT_TOKEN = "8963886990:AAFRtN7AXppucUnWAvMWV4hDRtq4QYbzSFo"
-
-async def download_and_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text.strip()
-    
-    # التأكد أن الرسالة رابط
-    if not url.startswith("http"):
-        return
-
-    msg = await update.message.reply_text("⏳ جاري التحميل... يرجى الانتظار.")
-    os.makedirs("downloads", exist_ok=True)
-
-    # إعدادات yt-dlp المحسنة لمحاكاة المتصفح
-    ydl_opts = {
-        "format": "bestvideo+bestaudio/best",
-        "outtmpl": "downloads/%(id)s.%(ext)s",
-  finally:
-        # حذف الملف المؤقت بعد الانتهاء
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
-
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    # استخدام فلتر الروابط فقط لتقليل الضغط على البوت
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_and_send))
-    
-    print("✅ البوت يعمل الآن..")
-    app.run_polling()
-
-if __name__ == "__main__":
+if __name__ == "__main_ _":
     main()
