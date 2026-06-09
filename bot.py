@@ -32,7 +32,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if is_youtube(url):
-        await update.message.reply_text(" راسل هالبوت @yhsawibot")
+        await update.message.reply_text(" راسل هالبوت @yhasawibot")
         return
 
     context.user_data["url"] = url
