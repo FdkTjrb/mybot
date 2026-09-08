@@ -10,6 +10,11 @@ IG_USER = "usrhumn"
 TEMP_DIR = "downloads"
 COOKIE_FILE = "cookies.txt"
 
+cookies_content = os.environ.get("YT_COOKIES")
+if cookies_content:
+    with open(COOKIE_FILE, "w") as f:
+        f.write(cookies_content)
+
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
 
