@@ -2,18 +2,13 @@ import os
 import shutil
 import instaloader
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 IG_USER = "usrhumn"
 TEMP_DIR = "downloads"
 COOKIE_FILE = "cookies.txt"
-
-cookies_content = os.environ.get("YT_COOKIES")
-if cookies_content:
-    with open(COOKIE_FILE, "w") as f:
-        f.write(cookies_content)
 
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
@@ -84,6 +79,13 @@ def download_yt_media(url, format_id, media_type, user_download_dir):
         return final_file
 
 # ----- دوال البوت الأساسية -----
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        f" اللَّهُمَّ صَلِّ عَلَى مُحَمَّــدٍ وَآلِ مُحَمَّــد!\n\n"
+        "أرسل رابط فيديو من اي منصة وبنزله لك إن شاء الله 🎬\n\n"
+    )
+    await update.message.reply_text(text)
+
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
     if not url.startswith("http"):
@@ -265,6 +267,7 @@ async def handle_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_url))
     app.add_handler(CallbackQueryHandler(handle_choice))
     print("✅")
